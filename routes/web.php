@@ -17,7 +17,8 @@ $router->get('/', function () use ($router) {
     return $router->app->version();
 });
 
-Route::group(['prefix' => 'user'], function () {
-    Route::post('/register', 'AdminController@dashboard');
-    Route::get('/users', 'AdminController@users');
+$router->group(['prefix' => 'users'], function () use ($router) {
+    $router->post('/registers', ['uses' => 'UserController@register']);
+    $router->post('/update_password', ['uses' => 'UserController@updatePassword']);
+    $router->post('/login', ['uses' => 'UserController@login']);
 });
