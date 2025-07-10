@@ -21,4 +21,7 @@ $router->group(['prefix' => 'users'], function () use ($router) {
     $router->post('/registers', ['uses' => 'UserController@register']);
     $router->post('/update_password', ['uses' => 'UserController@updatePassword']);
     $router->post('/login', ['uses' => 'UserController@login']);
+    $router->post('/update_profile', ['uses' => 'UserController@profile']);
+    $router->post('/reset_password', ['uses' => 'UserController@resetPassword']);
+    $router->post('/forgot_password', ['uses' => 'UserController@forgotPassword']);
 });
