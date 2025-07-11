@@ -23,8 +23,6 @@ class UserController extends Controller
         //
     }
 
-    //
-
     public function register(Request $req)
     {
         $validate = $this->validate($req,[
@@ -261,13 +259,26 @@ class UserController extends Controller
                 'verify_code' => $verify_code,
             ]);
 
-            /// send email //
-            $mail = Mail::queue("test",function(){
-                $msg->to(['email@gmail.com']);
-                $msg->from(['email@gmail.com']);
-                $msg->subject('Lumen Service Mail');
+          
+            $message = [
+                'title'     => 'Verification code Forgot Password',
+                'intro'     => "Verify Code : ".$user->verify_code,
+                'link'      => '',
+                'code_verify' => $verify_code,
+                'to_email'  => $req->email,
+                'to_name'   => $req->email." ".$user->nama_panggilan,
+            ];
+
+            $data = [
+                'name'=> $user->nama_panggilan,
+                'verify_code' => $verify_code,
+            ]; 
+
+            Mail::send('_mail_layout', $data, function($message) {
+                $message->to('ristian.rehi@gmail.com', 'Test Name')->subject('Forgot Password');
+                $message->from('ristian.rehi@gmail.com','Notification Email');
             });
-            
+
             if($update){
                 \DB::commit();
                 return response()->json(['message' => 'Verify code send your email. please check your inbox or spam mail'], 200);
