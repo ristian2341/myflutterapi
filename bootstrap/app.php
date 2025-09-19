@@ -60,6 +60,7 @@ $app->singleton(
 
 $app->configure('app');
 $app->configure('mail');
+$app->configure('jwt');
 
 /*
 |--------------------------------------------------------------------------
@@ -76,9 +77,9 @@ $app->configure('mail');
 //     App\Http\Middleware\ExampleMiddleware::class
 // ]);
 
-// $app->routeMiddleware([
-//     'auth' => App\Http\Middleware\Authenticate::class,
-// ]);
+$app->routeMiddleware([
+    'auth' => App\Http\Middleware\Authenticate::class,
+]);
 
 /*
 |--------------------------------------------------------------------------
@@ -92,8 +93,12 @@ $app->configure('mail');
 */
 
 // $app->register(App\Providers\AppServiceProvider::class);
-// $app->register(App\Providers\AuthServiceProvider::class);
+$app->register(App\Providers\AuthServiceProvider::class);
 // $app->register(App\Providers\EventServiceProvider::class);
+
+// Add this line
+$app->register(Tymon\JWTAuth\Providers\LumenServiceProvider::class);
+
 $app->register(Illuminate\Mail\MailServiceProvider::class);
 
 $app->alias('mail.manager', Illuminate\Mail\MailManager::class);
@@ -113,6 +118,7 @@ $app->alias('mailer', Illuminate\Contracts\Mail\MailQueue::class);
 | can respond to, as well as the controllers that may handle them.
 |
 */
+
 
 $app->router->group([
     'namespace' => 'App\Http\Controllers',

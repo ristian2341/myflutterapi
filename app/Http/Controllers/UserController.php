@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Auth;
 
 use App\Models\User;
 use App\Models\Profile;
@@ -167,7 +168,7 @@ class UserController extends Controller
 
         \DB::beginTransaction();
         try {
-            $token =  Crypt::encrypt(substr($user->code,2),32);
+            $token =  Crypt::encrypt(substr($user->code.date('ymdHi'),2),32);
             
             $update = User::where('code','=',$user->code)->update([
                 'login_at' => date('Y-m-d H:i:s'),
@@ -185,10 +186,10 @@ class UserController extends Controller
             ];
             if($update){
                 \DB::commit();
-                return response()->json(['message' => 'Login successfully', 'data' =>  $data], 200);
+                return response()->json(['statusCode' => 200,'message' => 'Login successfully', 'data' =>  $data], 200);
             } else {
                 \DB::rollback();
-                return response()->json(['message' => 'Failed to login user'], 500);
+                return response()->json(['statusCode' => 500,'message' => 'Failed to login user'], 500);
             }
         } catch (\Exception $e) {
             \DB::rollback();
