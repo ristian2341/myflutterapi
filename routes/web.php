@@ -25,3 +25,16 @@ $router->group(['prefix' => 'users'], function () use ($router) {
     $router->post('/reset_password', ['uses' => 'UserController@resetPassword']);
     $router->post('/forgot_password', ['uses' => 'UserController@forgotPassword']);
 });
+
+$router->group(['prefix' => 'setting'],function() use($router){
+    $router->get('/', ['uses' => 'SettingController@setting']);
+});
+
+Route::get('/ping', function() {
+    try {
+        DB::connection()->getPdo(); // cek koneksi db
+        return response()->json(['statusCode' => 200,'status' => 'ok']);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+    }
+});

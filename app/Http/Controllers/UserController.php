@@ -275,10 +275,12 @@ class UserController extends Controller
                 'verify_code' => $verify_code,
             ]; 
 
-            Mail::send('_mail_layout', $data, function($message) {
-                $message->to('ristian.rehi@gmail.com', 'Test Name')->subject('Forgot Password');
-                $message->from('ristian.rehi@gmail.com','Notification Email');
-            });
+            $success = $mailService->sendEmailWithTemplate($to, $subject, $view, $data);
+            if ($success) {
+                return response()->json(['status' => 'success', 'message' => 'Email terkirim dengan template!']);
+            } else {
+                return response()->json(['status' => 'error', 'message' => 'Gagal mengirim email.']);
+            }
 
             if($update){
                 \DB::commit();
