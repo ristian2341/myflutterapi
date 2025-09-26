@@ -24,6 +24,7 @@ $router->group(['prefix' => 'users'], function () use ($router) {
     $router->post('/update_profile', ['uses' => 'UserController@profile']);
     $router->post('/reset_password', ['uses' => 'UserController@resetPassword']);
     $router->post('/forgot_password', ['uses' => 'UserController@forgotPassword']);
+    $router->get('/get-user/{id}', ['uses' => 'UserController@UserProfile']);
 });
 
 $router->group(['prefix' => 'setting'],function() use($router){

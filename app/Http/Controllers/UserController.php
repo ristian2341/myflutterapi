@@ -216,6 +216,15 @@ class UserController extends Controller
 
         \DB::beginTransaction();
         try {
+
+            // update data User //
+            $update_user = User::where('code','=',$profile->code)->update([
+                'email' => $req->email,
+                'nama_panggilan' => $req->nama_panggilan,
+                'phone' => $req->phone,
+            ]);
+            
+            // update data profile
             $update_profile = Profile::where('code','=',$profile->code)->update([
                 'nama_lengkap' => $req->nama_lengkap,
                 'whatsapp' => $req->whatsapp,
@@ -225,6 +234,7 @@ class UserController extends Controller
                 'facebook' => $req->facebook,
                 'instagram' => $req->instagram,
                 'tiktok' => $req->tiktok,
+                'foto' => $req->foto,
             ]);
 
             if($update_profile){
@@ -304,6 +314,21 @@ class UserController extends Controller
         }
         
         return date('Ymd').sprintf("%04s",$no);
+    }
+
+    public function UserProfile($id)
+    {
+        $data = [];
+        $user = User::where('code',$id)->first();
+        $profile  = Profile::where('code',$id)->first();
+
+        $data = ['user' => $user,'profile' => $profile];
+        return response()->json($data);
+        if(!empty($user)){
+            return response()->json(['statusCode' => 200, ]);
+        }else{
+            return response()->json(['statusCode' => 500]);
+        }
     }
 
     /**
