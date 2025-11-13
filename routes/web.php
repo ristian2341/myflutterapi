@@ -39,3 +39,9 @@ Route::get('/ping', function() {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
 });
+
+$router->group(['prefix' => 'rekening'],function() use($router){
+    $router->get('/get-all',['uses' => 'Master\RekeningController@loadData']);
+    $router->get('/get-one/{id}',['uses' => 'Master\RekeningController@loadDataOne']);
+    $router->post('/save-rekening',['uses' => 'Master\RekeningController@saveData']);
+});
