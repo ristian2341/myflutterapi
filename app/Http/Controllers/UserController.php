@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\Models\User;
 use App\Models\Profile;
+use App\Services\MailService;
 
 class UserController extends Controller
 {
@@ -98,14 +99,14 @@ class UserController extends Controller
             
             if($update){
                 \DB::commit();
-                return response()->json(['message' => 'Update Password successfully', 'data' => $user], 200);
+                return response()->json(['statusCode' => 200,'message' => 'Update Password successfully', 'data' => $user]);
             } else {
                 \DB::rollback();
-                return response()->json(['message' => 'Failed to save user'], 500);
+                return response()->json(['statusCode' => 500,'message' => 'Failed to update password']);
             }
         } catch (\Exception $e) {
             \DB::rollback();
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json(['statusCode' => 400,'message' => $e->getMessage()]);
         }
     }
 
@@ -119,30 +120,37 @@ class UserController extends Controller
 
         \DB::beginTransaction();
         try {
-            $user = User::where('verify_code',$req->verify_code)->first();
-            if(!$user){
-                return response()->json(['message' => 'User not found'], 404);
-            }
+            
 
             if($req->password !== $req->re_password){
                 return response()->json(['message' => 'Retype password is not same'], 505);
             }
-    
-            if($req->verify_code !== $user->verify_code){
-                return response()->json(['message' => 'Verify Code invalid'], 505);
+
+            $user = $user = User::where([
+                        'verify_code' => $req->verify_code,
+                    ])->first();
+            if(!$user){
+                return response()->json(['message' => 'Kode Verifikasi salah'], 404);
             }
-    
-            $update = User::where('code',$user->code)->update([
+
+            $user = User::where([
+                        'verify_code' => $req->verify_code,
+                        'access_token' => $req->access_token,
+                    ])->first();
+            if(!$user){
+                return response()->json(['message' => 'User not found'], 404);
+            }
+
+            $update = User::where('code','=',$user->code)->update([
                 'password' => Hash::make($req->password),
-                'verify_code' => "",
             ]);
             
             if($update){
                 \DB::commit();
-                return response()->json(['message' => 'Reset Password successfully'], 200);
+                return response()->json(['status' => true,'message' => 'Reset Password successfully'], 200);
             } else {
                 \DB::rollback();
-                return response()->json(['message' => 'Failed to save user'], 500);
+                return response()->json(['status' => false,'message' => 'Failed to save user'], 500);
             }
         } catch (\Exception $e) {
             \DB::rollback();
@@ -174,6 +182,8 @@ class UserController extends Controller
                 'login_at' => date('Y-m-d H:i:s'),
                 'access_token' => $token,
             ]);
+
+            $profile = Profile::where('code',$user->code)->first();
             
             $data = [
                 'code' => $user->code,
@@ -183,6 +193,7 @@ class UserController extends Controller
                 'access_token' => $token,
                 'developer' => isset($user->developer) ? $user->developer : 0,
                 'supervisor' => isset($user->supervisor) ? $user->supervisor : 0,
+                'photo_profile' => !empty($profile->foto) ? $profile->foto : "",
             ];
             if($update){
                 \DB::commit();
@@ -202,10 +213,12 @@ class UserController extends Controller
         $validate = $this->validate($req,[
             'nama_lengkap' => 'required|max:100',
         ]);
-        $user = User::where(['code' => $req->code])->first();
+        
+        $user = User::where(['username' => $req->username,'access_token' => $req->access_token])->first();
+
         if(empty($user))
         {
-            return response()->json(['message' => 'User Not Found'], 500); 
+            return response()->json(['message' => 'User Not Found',$user], 500); 
         }
 
         $profile = Profile::where('user_code',$user->code)->first();
@@ -216,6 +229,50 @@ class UserController extends Controller
 
         \DB::beginTransaction();
         try {
+
+            // cek email apakah sudah dipakai untuk user lain  //
+            $user = User::where(['email' => $req->email])->where("code","<>",$user->code)->first();
+            if(!empty($user)){
+                return response()->json(['status' => 200, 'message' => 'Email sudah terdaftar. masukan email lainnya'],404);
+            }
+
+            // update data User //
+            $update_user = User::where('code','=',$profile->code)->update([
+                'email' => $req->email,
+                'nama_panggilan' => $req->nama_panggilan,
+                'phone' => $req->phone,
+            ]);
+        
+            $profilePhoto = null;
+
+            // jika ada file upload
+            if(!empty($req->profile_photo)){
+                // Ambil Base64 dari request
+                $base64Image = $req->input('profile_photo'); // misal 'data:image/png;base64,...'
+                // Hapus prefix jika ada
+                if (strpos($base64Image, ',') !== false) {
+                    $base64Image = explode(',', $base64Image)[1];
+                }
+
+                // Decode base64
+                $imageData = base64_decode($base64Image);
+
+                // Buat folder jika belum ada
+                $directory = __DIR__ . '/../../../public/images/profile_photos';
+                if (!file_exists($directory)) {
+                    mkdir($directory, 0755, true);
+                }
+
+                // Buat nama file unik
+                $filename = 'profile_' . $profile->code . '.jpg';
+                // Simpan file
+                file_put_contents($directory . '/' . $filename, $imageData);
+
+                // URL untuk dikirim ke client
+                $photoUrl = url('public/images/profile_photos/' . $filename);
+            }
+            
+            // update data profile
             $update_profile = Profile::where('code','=',$profile->code)->update([
                 'nama_lengkap' => $req->nama_lengkap,
                 'whatsapp' => $req->whatsapp,
@@ -225,17 +282,22 @@ class UserController extends Controller
                 'facebook' => $req->facebook,
                 'instagram' => $req->instagram,
                 'tiktok' => $req->tiktok,
+                'jenis_kel' => $req->jenis_kel,
+                'tgl_lahir' => date('Y-m-d',strtotime($req->tgl_lahir)),
+                'foto' =>  $photoUrl ?? $profile->foto,
             ]);
 
             if($update_profile){
                 \DB::commit();
-                return response()->json(['message' => 'Update Profile successfully', 'data' =>  $profile], 200);
+                $profile = Profile::where('code', $profile->code)->first();
+                return response()->json(['statusCode' => 200,'message' => 'Update Profile successfully', 'data' =>  $profile], 200);
             } else {
                 \DB::rollback();
-                return response()->json(['message' => 'Failed to update profile'], 500);
+                return response()->json(['statusCode' => 500,'message' => 'Failed to update profile'], 500);
             }
         } catch (\Exception $e) {
             \DB::rollback();
+            return $e;
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
@@ -244,50 +306,61 @@ class UserController extends Controller
     {
         \DB::beginTransaction();
         try {
-            
+            $success = true;
             $validate = $this->validate($req,[
                 'email' => 'required|max:150'
             ]);
 
             $user = User::where('email',$req->email)->first();
+            
             if(!$user){
                 return response()->json(['message' => 'Email not found'], 404);
             }
 
+            // get toke access
+            $token =  Crypt::encrypt(substr($user->code.date('ymdHi'),2),32);
+
             // generate verify_code & update into tabel user//
             $verify_code = random_int(100000, 999999);
+            
             $update = User::where('code',$user->code)->update([
                 'verify_code' => $verify_code,
+                'access_token' => $token,
             ]);
 
-          
-            $message = [
-                'title'     => 'Verification code Forgot Password',
-                'intro'     => "Verify Code : ".$user->verify_code,
-                'link'      => '',
-                'code_verify' => $verify_code,
-                'to_email'  => $req->email,
-                'to_name'   => $req->email." ".$user->nama_panggilan,
-            ];
-
-            $data = [
-                'name'=> $user->nama_panggilan,
-                'verify_code' => $verify_code,
-            ]; 
-
-            $success = $mailService->sendEmailWithTemplate($to, $subject, $view, $data);
-            if ($success) {
-                return response()->json(['status' => 'success', 'message' => 'Email terkirim dengan template!']);
-            } else {
-                return response()->json(['status' => 'error', 'message' => 'Gagal mengirim email.']);
-            }
-
             if($update){
-                \DB::commit();
-                return response()->json(['message' => 'Verify code send your email. please check your inbox or spam mail'], 200);
-            } else {
-                \DB::rollback();
-                return response()->json(['message' => 'Failed to save user'], 500);
+
+                $message = [
+                    'title'     => 'Verification code Forgot Password',
+                    'intro'     => "Verify Code : ".$user->verify_code,
+                    'link'      => '',
+                    'code_verify' => $verify_code,
+                    'to_email'  => $req->email,
+                    'to_name'   => $req->email." ".$user->nama_panggilan,
+                ];
+    
+                $data = [
+                    'name'=> $user->nama_panggilan,
+                    'verify_code' => $verify_code,
+                ]; 
+        
+                if($update){
+                    \DB::commit();
+                    $success = MailService::sendEmailWithTemplate($user->email, "Send Email Verifikasi Code", "_mail_layout", $data);
+                    if ($success) {
+                        $data = [
+                            'code'=> $user->code,
+                            'verify_code' => $verify_code,
+                            'access_token' => $token,
+                        ]; 
+                        return response()->json(['status' => true, 'message' => 'Kode Verifikasi reset password sudah di terkirim diemail yang anda masukan, cek email anda jika tidak masuk coba cek di folder spam','data' => $data]);
+                    } else {
+                        return response()->json(['status' => false, 'message' => 'Gagal mengirim email verifikasi code.']);
+                    }
+                } else {
+                    \DB::rollback();
+                    return response()->json(['message' => 'Failed to save user'], 500);
+                }
             }
         } catch (\Exception $e) {
             \DB::rollback();
@@ -304,6 +377,21 @@ class UserController extends Controller
         }
         
         return date('Ymd').sprintf("%04s",$no);
+    }
+
+    public function UserProfile($id)
+    {
+        $data = [];
+        $user = User::where('username',$id)->first();
+        $profile  = Profile::where('code',$user->code)->first();
+
+        $data = ['user' => $user,'profile' => $profile];
+        return response()->json($data);
+        if(!empty($user)){
+            return response()->json(['statusCode' => 200, ]);
+        }else{
+            return response()->json(['statusCode' => 500]);
+        }
     }
 
     /**

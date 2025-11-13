@@ -24,6 +24,7 @@ $router->group(['prefix' => 'users'], function () use ($router) {
     $router->post('/update_profile', ['uses' => 'UserController@profile']);
     $router->post('/reset_password', ['uses' => 'UserController@resetPassword']);
     $router->post('/forgot_password', ['uses' => 'UserController@forgotPassword']);
+    $router->get('/get-user/{id}', ['uses' => 'UserController@UserProfile']);
 });
 
 $router->group(['prefix' => 'setting'],function() use($router){
@@ -37,4 +38,10 @@ Route::get('/ping', function() {
     } catch (\Exception $e) {
         return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
     }
+});
+
+$router->group(['prefix' => 'rekening'],function() use($router){
+    $router->get('/get-all',['uses' => 'Master\RekeningController@loadData']);
+    $router->get('/get-one/{id}',['uses' => 'Master\RekeningController@loadDataOne']);
+    $router->post('/save-rekening',['uses' => 'Master\RekeningController@saveData']);
 });
