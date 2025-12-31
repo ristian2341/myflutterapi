@@ -18,13 +18,14 @@ class RekeningController extends Controller
     {
         try {
             $data_rekening = Rekening::orderBy('created_at', 'desc')->limit(10)->get();
+            
             if(!empty($data_rekening)){
-                return response()->json(['statusCode' => 200,"message"=>"Load Data Rekening",'data' => $data]);
+                return response()->json(['statusCode' => 200,"message"=>"Load Data Rekening",'data' => $data_rekening]);
             }else{
                 return response()->json(['statusCode' => 500,"message"=>"Data Not Found",'data' => []]);
             }
         } catch (\Exception $e) {
-            return response()->json(['statusCode' => 404,"print"=>"Data Not Found",'data' => []]);
+            return response()->json(['statusCode' => 404,"print"=>$e->getMessage(),'data' => []]);
         }
     }
 
@@ -47,20 +48,23 @@ class RekeningController extends Controller
         \DB::beginTransaction();
         try {
             $result = true;
-
+            
             $validate = $this->validate($req,[
                 'nomor_rekening' => 'required|max:150',
                 'atas_nama' => 'required|max:150',
-                'bank' => 'required|max:150',
+                'nama_bank' => 'required|max:150',
             ]);
-
+          
             if(empty($req->code)){
+                  
                 $rekening = new Rekening();
                 $rekening->code = $rekening->getCode(); 
-                $rekening->nomor_rekening = $rekening->nomor_rekening; 
+                $rekening->nomor_rekening = $req->nomor_rekening; 
                 $rekening->atas_nama = $req->atas_nama ?? ""; 
                 $rekening->cabang = $req->cabang ?? ""; 
                 $rekening->nama_bank = $req->nama_bank ?? ""; 
+                $rekening->created_at = strtotime(time()); 
+                $rekening->updated_at = strtotime(time()); 
                 $result = $rekening->save();
             }else{
                 $result = Rekening::where('code',$id)->update([
@@ -68,9 +72,10 @@ class RekeningController extends Controller
                     'atas_nama' => $req->atas_nama,
                     'cabang' => $req->cabang,
                     'nama_bank' => $req->nama_bank,
+                    'updated_at' => strtotime(time()),
                 ]);
             }
-
+           
             if ($result) {
                 \DB::commit();
                 return response()->json(['message' => 'Rekening saved successfully!', 'rekening' => $rekening]);
@@ -79,6 +84,7 @@ class RekeningController extends Controller
                 return response()->json(['message' => 'Failed to save rekening.'], 500);
             }
         } catch (\Exception $e) {
+            print_r($e);die;
             \DB::rollback();
             return response()->json(['statusCode' => 404,"print"=>"Proses save data failed",'data' => []]);
         }
